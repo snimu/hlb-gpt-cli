@@ -297,12 +297,17 @@ class SpeedyLangNet(nn.Module):
         x = self.net_dict['norm'](x)
         x = self.net_dict['outputs'](x)
         return x
+    
+
+def make_attn(settings: dict[str, Any]):
+    # You can parametrically change anything you want about the attn blocks here
+    return LatentAttentionBlock(settings['width'], settings['linear_value'], settings['num_heads'])
 
 
 def make_net(settings: dict[str, Any]):
     network_dict = nn.ModuleDict({
         'embedding': nn.Embedding(hyp['misc']['num_tokens'], settings['width'], scale_grad_by_freq=True),
-        'attn_layers': nn.ModuleList([LatentAttentionBlock(settings['width']) for _ in range(settings['depth'])]),
+        'attn_layers': nn.ModuleList([make_attn(settings) for _ in range(settings['depth'])]),
         'norm': nn.LayerNorm(settings['width'], bias=False),
         'outputs': nn.Linear(settings['width'], hyp['misc']['num_tokens'], bias=False),
 })
@@ -403,7 +408,7 @@ def grow_sequence_length(old_length, old_batchsize):
 #          Logging           #
 ##############################
 
-variables_to_log = ['epoch', 'curr_step', 'train_loss', 'val_loss', 'val_perplexity', 'train_acc', 'val_acc', 'grad_norm', 'microbatch_steps', 'total_seconds']
+variables_to_log = ['epoch', 'curr_step', 'train_loss', 'val_loss', 'val_pplx', 'train_acc', 'val_acc', 'grad_norm', 'microbatch_steps', 't_secs']
 # define the printing function and print the column heads
 def print_training_details(columns_list, separator_left='  ', separator_right='  |', column_labels_only=False, is_final_entry=False):
     output_line = "|" # start with the left bar
@@ -423,7 +428,7 @@ def print_training_details(columns_list, separator_left='  ', separator_right=' 
 # The previous function was a shorter but slightly more heinous lambda, however, this may still cause you some pain. <3 :'(
 def format_for_table(var_list, locals):
     int_format     = lambda x: f"{locals[x]}".rjust(len(x))
-    default_format = lambda x: "{:0.4f}".format(locals[x]).rjust(len(x))
+    default_format = lambda x: f"{locals[x]:0.4f}".rjust(len(x)) if len(locals[x]) < 8 else f"{locals[x]:.4f}"[:8].rjust(len(x))
     blank_format   = lambda x: " "*len(x)
 
     out_list = [blank_format(v) if v not in locals else (int_format(v) if type(locals[v]) == int else default_format(v)) for v in var_list]
@@ -433,6 +438,10 @@ def format_for_table(var_list, locals):
 ########################################
 #           Train and Eval             #
 ########################################
+
+@torch.no_grad()
+def calc_pplx(loss: torch.Tensor | float) -> torch.Tensor | float:
+    return 2.71828 ** loss
 
 def eval(net):
     ####################
@@ -456,9 +465,9 @@ def eval(net):
             val_loss += 1./num_eval_steps * loss_fn(outputs.flatten(0, 1).float(), targets.flatten(0, 1))
             val_acc  += 1./num_eval_steps * (outputs.argmax(-1) == targets).float().mean()
 
-        val_perplexity = 2.71828 ** val_loss
+        val_pplx = calc_pplx(val_loss)
 
-    return val_acc.item(), val_loss.item(), val_perplexity.item()
+    return val_acc.item(), val_loss.item(), val_pplx.item()
 
 def train(net: SpeedyLangNet | None = None, **settings):
 
@@ -466,7 +475,7 @@ def train(net: SpeedyLangNet | None = None, **settings):
     #     Init      #
     #################
     # Full-run statistics variables
-    total_seconds        = 0.
+    t_secs        = 0.
     curr_microbatch_step = curr_step = 0
     tokens_seen          = 0
 
@@ -482,7 +491,7 @@ def train(net: SpeedyLangNet | None = None, **settings):
     assert final_batchsize > 1, f"Error: Specified configuration takes up too much memory (calculated final batchsize {final_batchsize} is less than 1!)"
 
     # Validation parameters
-    val_loss, val_acc, val_perplexity = None, None, None
+    val_loss, val_acc, val_pplx = None, None, None
 
     # Get network
     net = net or make_net(settings)
@@ -528,6 +537,12 @@ def train(net: SpeedyLangNet | None = None, **settings):
     opt               = torch.optim.AdamW(param_groups_dict.values(), fused=True)
     scheduler         = torch.optim.lr_scheduler.LambdaLR(opt, [k['scheduler'] for k in param_groups_dict.values()])
 
+    # Save some results
+    train_losses, val_losses, train_accs, val_accs, train_pplxs, val_pplxs = [], [], [], [], [], []
+    grad_norms, cumulative_time_train, cumulative_time_val = [], [], []
+    tokens_seen_train, tokens_seen_val, epochs_train, epochs_val = [], [], [], []
+    batch_sizes_train, batch_sizes_val = [], []
+    seq_lengths_train, seq_lengths_val = [], []
 
     #################
     # Training Mode #
@@ -553,14 +568,30 @@ def train(net: SpeedyLangNet | None = None, **settings):
 
         loss.div(discrete_sampled_microbatch_steps).backward()
         tokens_seen += curr_batchsize * curr_length
+        epoch = tokens_seen/len(data['train'])
 
-        # Quick non-eval summary every N training steps, at the end of every microbatch group, if we are not doing a _full eval_ here.
-        if curr_step % 10 == 0 and curr_microbatch_step % discrete_sampled_microbatch_steps == 0 and not curr_step % hyp['opt']['eval_every'] == 0:
+        do_eval = (
+            (curr_microbatch_step % discrete_sampled_microbatch_steps == 0) 
+            and (curr_step % hyp['opt']['eval_every'] == 0)
+        ) or (epoch - epochs_train[-1]) >= settings['max_epochs_between_vals']
+
+        # Quick non-eval summary every N training steps, at the end of every microbatch group, including when we are not doing a _full eval_ here so that the resulting stats are complete
+        if curr_step % 10 == 0 and curr_microbatch_step % discrete_sampled_microbatch_steps == 0:
             train_acc          = (outputs.detach().argmax(-1) == targets).float().mean().item()
             train_loss         = loss.detach().cpu().item()
-            train_summary_vars = {'epoch': tokens_seen//len(data['train']), 'curr_step': curr_step, 'train_loss': train_loss, 'train_acc': train_acc, 'grad_norm': grad_norm}
 
-            print_training_details(format_for_table(variables_to_log, locals=train_summary_vars))
+            if not do_eval:
+                train_summary_vars = {'epoch': epoch, 'curr_step': curr_step, 'train_loss': train_loss, 'train_acc': train_acc, 'grad_norm': grad_norm}
+                print_training_details(format_for_table(variables_to_log, locals=train_summary_vars))
+            train_losses.append(train_loss)
+            train_accs.append(train_acc)
+            train_pplxs.append(float(calc_pplx(train_loss)))  # unnecessary float, but better safe than sorry
+            grad_norms.append(grad_norm)
+            tokens_seen_train.append(tokens_seen)
+            epochs_train.append(epoch)
+            batch_sizes_train.append(curr_batchsize)
+            seq_lengths_train.append(curr_length)
+            cumulative_time_train.append(t_secs)
 
 
         # Once we've accumulated steps over all of our microbatches, take a single full-batchsize step.
@@ -602,38 +633,49 @@ def train(net: SpeedyLangNet | None = None, **settings):
             curr_microbatch_step = 0
             curr_step += 1
 
-            # Since we're not running over epochs anymore, we have to manually calculate roughly what epoch it is. This is different than the standard random derangement of sampled sequences and has different pros/cons, is my understanding. :thumbsup:
-            epoch = tokens_seen//len(data['train'])
+        if do_eval:
+            ender.record()
+            torch.cuda.synchronize()
 
-            if curr_step % hyp['opt']['eval_every'] == 0:
-                ender.record()
-                torch.cuda.synchronize()
+            t_secs += 1e-3 * starter.elapsed_time(ender)
+            train_loss = loss.detach().cpu().item() # Update the loss for the training details printout
 
-                total_seconds += 1e-3 * starter.elapsed_time(ender)
-                train_loss = loss.detach().cpu().item() # Update the loss for the training details printout
+            net.eval()
+            val_acc, val_loss, val_pplx = eval(net)
 
-                net.eval()
-                val_acc, val_loss, val_perplexity = eval(net)
+            val_losses.append(val_loss)
+            val_accs.append(val_acc)
+            val_pplxs.append(val_pplx)
+            tokens_seen_val.append(tokens_seen)
+            epochs_val.append(epoch)
+            batch_sizes_val.append(curr_batchsize)
+            seq_lengths_val.append(curr_length)
+            cumulative_time_val.append(t_secs)
 
-                if (curr_step//hyp['opt']['eval_every']) % hyp['opt']['save_every_n_evals'] == 0:
-                    torch.save(net, 'model.pt')
+            # Print out our training details
+            ## We also check to see if we're on our final eval loop (assum that max_curr_step lines up with the eval_every value) so we can print the 'bottom' of the table for each round.
+            is_final_eval = (curr_step >= hyp['opt']['total_train_steps']) # If we're at the end of training, add a line after the end of the run
+            print_training_details(format_for_table(variables_to_log, locals=locals()), is_final_entry=is_final_eval)
 
-                # Print out our training details
-                ## We also check to see if we're on our final eval loop (assum that max_curr_step lines up with the eval_every value) so we can print the 'bottom' of the table for each round.
-                is_final_eval = (curr_step >= hyp['opt']['total_train_steps']) # If we're at the end of training, add a line after the end of the run
-                print_training_details(format_for_table(variables_to_log, locals=locals()), is_final_entry=is_final_eval)
-
-                torch.cuda.synchronize()
-                starter.record()
-                net.train()
+            torch.cuda.synchronize()
+            starter.record()
+            net.train()
         curr_microbatch_step += 1
 
-    return net, val_loss # Return the final validation loss achieved (not using the 'best validation loss' selection strategy, which I think is okay here....)
+    return (
+        net, val_loss,
+        train_losses, val_losses, train_accs, val_accs, train_pplxs, val_pplxs, 
+        grad_norms, cumulative_time_train, cumulative_time_val, 
+        tokens_seen_train, tokens_seen_val, 
+        epochs_train, epochs_val,
+        batch_sizes_train, batch_sizes_val,
+        seq_lengths_train, seq_lengths_val
+    )
 
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train a model on a dataset.")
-
+    # TODO: add wandb integration???
     # DEFINE ARGS
     parser.add_argument("-s", "--save", action="store_true", help="Save the model.")
     parser.add_argument("--append", action="store_true", help="If set, the savefile won't be overwritten but appended to.")
@@ -736,11 +778,16 @@ def main():
 
             (
                     net, last_val_loss,
-                    train_losses, val_losses, train_accs, val_accs, val_pplxs, 
-                    grad_norms, cumulative_time, 
+                    train_losses, val_losses, train_accs, val_accs, train_pplxs, val_pplxs, 
+                    grad_norms, cumulative_time_train, cumulative_time_val, 
                     tokens_seen_train, tokens_seen_val, 
                     epochs_train, epochs_val,
-            ) = train(  # you can give this the net and it will just continue training on it
+                    batch_sizes_train, batch_sizes_val,
+                    seq_lengths_train, seq_lengths_val
+            ) = train(
+                net=None,  # you can give this the net and it will just continue training on it
+                depth=depth,
+                width=width,
                 num_heads=num_heads,
                 linear_value=linear_value,
                 num_epochs_train=args.num_epochs_train,
@@ -749,6 +796,7 @@ def main():
                 num_steps_val=args.num_steps_val,
                 num_tokens_train=args.num_tokens_train,
                 num_tokens_val=args.num_tokens_val,
+                max_epochs_between_vals=args.max_epochs_between_vals,
             )
 
             # You can do whatever you want with your net here; I delete it to save VRAM
@@ -768,13 +816,19 @@ def main():
                 "val_loss": [str(val_losses)],
                 "train_acc": [str(train_accs)],
                 "val_acc": [str(val_accs)],
+                "train_pplx": [str(train_pplxs)],
                 "val_pplx": [str(val_pplxs)],
                 "grad_norm": [str(grad_norms)],
-                "cumulative_time": [str(cumulative_time)],
+                "cumulative_time_train": [str(cumulative_time_train)],
+                "cumulative_time_val": [str(cumulative_time_val)],
                 "tokens_seen_train": [str(tokens_seen_train)],
                 "tokens_seen_val": [str(tokens_seen_val)],
                 "epochs_train": [str(epochs_train)],
                 "epochs_val": [str(epochs_val)],
+                "batch_sizes_train": [str(batch_sizes_train)],
+                "batch_sizes_val": [str(batch_sizes_val)],
+                "seq_lengths_train": [str(seq_lengths_train)],
+                "seq_lengths_val": [str(seq_lengths_val)],
             }
             df = pl.DataFrame(results)
 
