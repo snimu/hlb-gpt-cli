@@ -119,11 +119,11 @@ hyp = {
 
 def change_gpu_token_capacity(factor: float):
     global gpu_token_capacity
-    gpu_token_capacity = factor * 114688
+    gpu_token_capacity = int(factor * 114688)
 
 
 def change_model_scale(scale: float, depth: int | None = None, width: int | None = None) -> tuple[int, int]:
-    global model_scale, tokens_per_batch_capacity, hyp
+    global model_scale, tokens_per_batch_capacity, hyp, gpu_token_capacity
     if depth is not None or width is not None:
         assert width is not None and depth is not None
         width = to_nearest_64(width)
@@ -485,13 +485,7 @@ def train(net: SpeedyLangNet | None = None, **settings):
         wandb.finish()  # Finish any previous runs
         wandb.init(
             project=settings['wandb_project'], 
-            config={
-                'model_scale': model_scale,
-                'max_sequence_length': max_sequence_length,
-                'gpu_token_capacity': gpu_token_capacity,
-                'tokens_per_batch_capacity': tokens_per_batch_capacity,
-                **settings
-            }
+            config=settings,
         )
 
     # Full-run statistics variables
@@ -838,7 +832,6 @@ def main():
                 net=None,  # you can give this the net and it will just continue training on it
                 depth=depth,
                 width=width,
-                num_params=num_params,  # include everything you want to log to wandb here
                 num_heads=num_heads,
                 linear_value=linear_value,
                 num_epochs_train=args.num_epochs_train,
@@ -850,6 +843,11 @@ def main():
                 max_epochs_between_vals=args.max_epochs_between_vals,
                 log_wandb=args.log_wandb,
                 wandb_project=args.wandb_project,
+                num_params=num_params,  # include everything you want to log to wandb here
+                model_scale=model_scale,
+                gpu_token_capacity=gpu_token_capacity,
+                tokens_per_batch_capacity=tokens_per_batch_capacity,
+                max_sequence_length=max_sequence_length,
             )
 
             # You can do whatever you want with your net here; I delete it to save VRAM
