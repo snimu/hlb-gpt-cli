@@ -28,6 +28,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 import polars as pl
+import wandb
 
 # This seems like one of the best choices right now for a fast/lightweight/simple tokenizer.
 import tiktoken
@@ -474,6 +475,25 @@ def train(net: SpeedyLangNet | None = None, **settings):
     #################
     #     Init      #
     #################
+
+    # Get network
+    net = net or make_net(settings)
+    settings.remove('net')  # dont want to log the net in wandb
+
+    # Init wandb 
+    if settings['log_wandb']:
+        wandb.finish()  # Finish any previous runs
+        wandb.init(
+            project=settings['wandb_project'], 
+            config={
+                'model_scale': model_scale,
+                'max_sequence_length': max_sequence_length,
+                'gpu_token_capacity': gpu_token_capacity,
+                'tokens_per_batch_capacity': tokens_per_batch_capacity,
+                **settings
+            }
+        )
+
     # Full-run statistics variables
     t_secs        = 0.
     curr_microbatch_step = curr_step = 0
@@ -492,9 +512,6 @@ def train(net: SpeedyLangNet | None = None, **settings):
 
     # Validation parameters
     val_loss, val_acc, val_pplx = None, None, None
-
-    # Get network
-    net = net or make_net(settings)
 
     # Get the total number of parameters in our model and use that to generate/calculate the base lr.
     total_trainable_params = sum([p.data.numel() if p.requires_grad else 0 for p in net.parameters()])
@@ -592,6 +609,18 @@ def train(net: SpeedyLangNet | None = None, **settings):
             batch_sizes_train.append(curr_batchsize)
             seq_lengths_train.append(curr_length)
             cumulative_time_train.append(t_secs)
+            if settings['log_wandb']:
+                wandb.log({
+                    'train_loss': train_loss, 
+                    'train_acc': train_acc, 
+                    'train_pplx': float(calc_pplx(train_loss)), 
+                    'grad_norm': grad_norm, 
+                    'tokens_seen_train': tokens_seen, 
+                    'epoch_train': epoch,
+                    'batch_size_train': curr_batchsize,
+                    'sequence_length_train': curr_length,
+                    'cumulative_time_train': t_secs
+                })
 
 
         # Once we've accumulated steps over all of our microbatches, take a single full-batchsize step.
@@ -651,6 +680,18 @@ def train(net: SpeedyLangNet | None = None, **settings):
             batch_sizes_val.append(curr_batchsize)
             seq_lengths_val.append(curr_length)
             cumulative_time_val.append(t_secs)
+            
+            if settings['log_wandb']:
+                wandb.log({
+                    'val_loss': val_loss, 
+                    'val_acc': val_acc, 
+                    'val_pplx': val_pplx, 
+                    'tokens_seen_val': tokens_seen, 
+                    'epoch_val': epoch,
+                    'batch_size_val': curr_batchsize,
+                    'sequence_length_val': curr_length,
+                    'cumulative_time_val': t_secs
+                })
 
             # Print out our training details
             ## We also check to see if we're on our final eval loop (assum that max_curr_step lines up with the eval_every value) so we can print the 'bottom' of the table for each round.
@@ -675,11 +716,16 @@ def train(net: SpeedyLangNet | None = None, **settings):
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train a model on a dataset.")
-    # TODO: add wandb integration???
+
     # DEFINE ARGS
-    parser.add_argument("-s", "--save", action="store_true", help="Save the model.")
+    # Logging
+    parser.add_argument("-l", "--log_csv", action="store_true", help="Log results to csv-file.")
     parser.add_argument("--append", action="store_true", help="If set, the savefile won't be overwritten but appended to.")
-    parser.add_argument("--savefile", type=str, default="results_041.csv", help="Save the results to this file.")
+    parser.add_argument("--logfile", type=str, default="results_041.csv", help="Log the results to this file.")
+    parser.add_argument("-w", "--log_wandb", action="store_true", help="Log results to Weights & Biases.")
+    parser.add_argument("--wandb_project", type=str, default="speedy-lang", help="Weights & Biases project to log to.")
+
+    # How many runs per setting, how many steps/epochs/tokens to train/validate for per run
     parser.add_argument("--num_runs", type=int, default=1, help="Number of runs to run each experiment for.")
     parser.add_argument("--num_steps_train", type=int, default=int(1e9), help="Number of steps to train the model. Very high by default so that epochs are the determining factor by default.")
     parser.add_argument("--num_steps_val", type=int, default=int(1e9), help="Stop training after this many validation at step>=this. Very high by default so that epochs are the determining factor by default.")
@@ -687,14 +733,13 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--num_epochs_val", type=int, default=1, help="Number of epochs after which to break when validating.")
     parser.add_argument("--num_tokens_train", type=int, default=int(1e12), help="Number of tokens after which to break when printing training details.")
     parser.add_argument("--num_tokens_val", type=int, default=int(1e12), help="Number of tokens after which to break when validating.")
+    parser.add_argument("--max_epochs_between_vals", type=float, default=0.25, help="Validate at after at most this many epochs.")
+
+    # Model settings
     parser.add_argument("--model_scale", type=float, default=1.0, nargs="+", help="Scale the model size. Can be overwritten by setting depth and width")
     parser.add_argument("--depth", type=int, default=-1, help="Depth of the model. Automatically set if <1 (via model_scale)")
     parser.add_argument("--width", type=int, default=-1, help="Width of the model. Automatically set if <1 (via model_scale)")
     parser.add_argument("--num_heads", type=int, default=1, help="Number of attention heads.")
-    parser.add_argument("--gpu_capacity_scalar", type=float, default=1.0, help="1.0 is for a 40GB A100; reduce or increase as needed. You may need to include some slack.")
-    parser.add_argument("--seed", type=int, default=100, help="Seed for the random number generator.")
-    parser.add_argument("--max_epochs_between_vals", type=float, default=0.25, help="Validate at after at most this many epochs.")
-
     parser.add_argument(
         "--linear_value",
         type=int, default=0, nargs="+",
@@ -705,6 +750,11 @@ def get_args() -> argparse.Namespace:
         "TYPE: int; DEFAULT: 0"
     )
 
+    # Other settings
+    parser.add_argument("--gpu_capacity_scalar", type=float, default=1.0, help="1.0 is for a 40GB A100; reduce or increase as needed. You may need to include some slack.")
+    parser.add_argument("--seed", type=int, default=100, help="Seed for the random number generator.")
+
+    # PARSE ARGS
     args = parser.parse_args()
 
     # CHECK & PREPROCESS ARGS
@@ -788,6 +838,7 @@ def main():
                 net=None,  # you can give this the net and it will just continue training on it
                 depth=depth,
                 width=width,
+                num_params=num_params,  # include everything you want to log to wandb here
                 num_heads=num_heads,
                 linear_value=linear_value,
                 num_epochs_train=args.num_epochs_train,
@@ -797,6 +848,8 @@ def main():
                 num_tokens_train=args.num_tokens_train,
                 num_tokens_val=args.num_tokens_val,
                 max_epochs_between_vals=args.max_epochs_between_vals,
+                log_wandb=args.log_wandb,
+                wandb_project=args.wandb_project,
             )
 
             # You can do whatever you want with your net here; I delete it to save VRAM
@@ -808,6 +861,7 @@ def main():
                 "model_scale": [model_scale],
                 "depth": [hyp['net']['num_blocks']],
                 "width": [hyp['net']['residual_depth']],
+                "num_params": [num_params],
                 "num_heads": [num_heads],
                 "linear_value": [linear_value],
                 "seed": [seed],
@@ -833,11 +887,11 @@ def main():
             df = pl.DataFrame(results)
 
 
-            if args.save:
-                if not os.path.exists(args.savefile) or ((not args.append) and (run_num == setting_num == 0)):
-                    df.write_csv(args.savefile)
+            if args.log_csv:
+                if not os.path.exists(args.logfile) or ((not args.append) and (run_num == setting_num == 0)):
+                    df.write_csv(args.logfile)
                 else:
-                    with open(args.savefile, 'ab') as f:
+                    with open(args.logfile, 'ab') as f:
                         df.write_csv(f, include_header=False)
 
             seed += 1
