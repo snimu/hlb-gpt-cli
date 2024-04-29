@@ -126,7 +126,7 @@ def change_model_scale(
         scale: float, depth: int | None = None, 
         width: int | None = None, 
         num_heads: int = 1,
-) -> tuple[int, int]:
+) -> tuple[int, int, int, int]:
     global model_scale, tokens_per_batch_capacity, hyp, gpu_token_capacity
     if depth is not None or width is not None:
         assert width is not None and depth is not None
@@ -153,7 +153,7 @@ def change_model_scale(
     # Needed for computation to work
     tokens_per_batch_capacity  = math.floor(gpu_token_capacity / (1.52174 + .482 * model_scale**(.87)))
 
-    return num_params, num_non_embedding_params
+    return num_params, num_non_embedding_params, depth, width
 
 
 
@@ -473,6 +473,7 @@ def eval(net):
         val_pplx = calc_pplx(val_loss)
 
     return val_acc.item(), val_loss.item(), val_pplx.item()
+
 
 def train(net: SpeedyLangNet | None = None, **settings):
 
@@ -803,7 +804,9 @@ def main():
 
     for setting_num, (model_scale, depth, width, num_heads, linear_value) in enumerate(settings):
         seed = args.seed  # reset seed so that every setting goes through the same seeds over the different runs
-        num_params, num_non_embedding_params = change_model_scale(model_scale, depth, width, num_heads)
+
+        # Change the model scale; width is rounded to nearest 64, and both are None if scaled by model_scale -> get depth and width here
+        num_params, num_non_embedding_params, depth, width = change_model_scale(model_scale, depth, width, num_heads)
         for run_num in range(args.num_runs):
             cumulative_run_num += 1
 
