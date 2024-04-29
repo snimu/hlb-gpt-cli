@@ -848,6 +848,7 @@ def main():
                 gpu_token_capacity=gpu_token_capacity,
                 tokens_per_batch_capacity=tokens_per_batch_capacity,
                 max_sequence_length=max_sequence_length,
+                seed=seed,
             )
 
             # You can do whatever you want with your net here; I delete it to save VRAM
