@@ -798,7 +798,7 @@ def get_args() -> argparse.Namespace:
         )
         assert all(m > 0 for m in args.model_scale), "Please set a positive model_scale"
     else:
-        print("\n[WARNING] Scaling by depth and width explicitly. Ignoring model_scale (will be automatically determined) [/WARNING]\n")
+        print("\n[WARNING] Scaling by depth and width explicitly. Ignoring model_scale (will be automatically determined) [WARNING]\n")
 
     assert ((w % h) == 0 for w in args.width for h in args.num_heads), "Width must be divisible by the number of heads."
 
