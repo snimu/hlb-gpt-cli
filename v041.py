@@ -893,3 +893,7 @@ def main():
                         df.write_csv(f, include_header=False)
 
             seed += 1
+
+
+if __name__ == "__main__":
+    main()
