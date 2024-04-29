@@ -275,6 +275,10 @@ class LatentAttentionBlock(nn.Module):
         # Compute attention. Something to note is that there are no attention heads here. This seemed to work a bit better, maybe due to not needing memory `.contiguous()` calls or similar
         attention = F.scaled_dot_product_attention(query, key, geglu_attention_value, attn_mask=attn_mask)
 
+        if self.num_heads > 1:
+            attention = einops.rearrange(attention, 'b h n d -> b n (h d)')
+            geglu_local = einops.rearrange(geglu_local, 'b h n d -> b n (h d)')
+
         # Output linear layer
         out = F.linear(torch.cat([geglu_local, attention], dim=-1), self.project)
 
