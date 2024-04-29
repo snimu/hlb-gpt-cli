@@ -595,6 +595,8 @@ def train(net: SpeedyLangNet | None = None, **settings):
             train_acc          = (outputs.detach().argmax(-1) == targets).float().mean().item()
             train_loss         = loss.detach().cpu().item()
 
+            grad_norm = get_grad_norm(net)
+
             if not do_eval:
                 train_summary_vars = {'epoch': epoch, 'curr_step': curr_step, 'train_loss': train_loss, 'train_acc': train_acc, 'grad_norm': grad_norm}
                 print_training_details(format_for_table(variables_to_log, locals=train_summary_vars))
