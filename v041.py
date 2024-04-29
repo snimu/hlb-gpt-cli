@@ -573,6 +573,8 @@ def train(net: SpeedyLangNet | None = None, **settings):
 
     net.train()
 
+    stop_run = False
+
     # Main loop. Most of the complexity here is in the dynamic growing scheduler(s).
     while curr_step < hyp['opt']['total_train_steps']:
         inputs, targets = get_batch(data, key='train', batchsize=curr_batchsize, length=curr_length)
@@ -589,6 +591,10 @@ def train(net: SpeedyLangNet | None = None, **settings):
             (curr_microbatch_step % discrete_sampled_microbatch_steps == 0) 
             and (curr_step % hyp['opt']['eval_every'] == 0)
         ) or (epoch - epochs_train[-1]) >= settings['max_epochs_between_vals']
+            
+        if curr_step >= settings['num_steps_train'] or epoch >= settings['num_epochs_train'] or tokens_seen >= settings['num_tokens_train']:
+            do_eval=True
+            stop_run = True
 
         # Quick non-eval summary every N training steps, at the end of every microbatch group, including when we are not doing a _full eval_ here so that the resulting stats are complete
         if curr_step % 10 == 0 and curr_microbatch_step % discrete_sampled_microbatch_steps == 0:
@@ -693,15 +699,19 @@ def train(net: SpeedyLangNet | None = None, **settings):
                     'cumulative_time_val': t_secs
                 })
 
+            if curr_step >= settings['num_steps_val'] or epoch >= settings['num_epochs_val'] or tokens_seen >= settings['num_tokens_val']:
+                stop_run = True
             # Print out our training details
             ## We also check to see if we're on our final eval loop (assum that max_curr_step lines up with the eval_every value) so we can print the 'bottom' of the table for each round.
-            is_final_eval = (curr_step >= hyp['opt']['total_train_steps']) # If we're at the end of training, add a line after the end of the run
+            is_final_eval = stop_run or (curr_step >= hyp['opt']['total_train_steps']) # If we're at the end of training, add a line after the end of the run
             print_training_details(format_for_table(variables_to_log, locals=locals()), is_final_entry=is_final_eval)
 
             torch.cuda.synchronize()
             starter.record()
             net.train()
         curr_microbatch_step += 1
+        if stop_run:
+            break
 
     return (
         net, val_loss,
