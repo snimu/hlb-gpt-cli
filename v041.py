@@ -558,6 +558,7 @@ def train(net: SpeedyLangNet | None = None, **settings):
     tokens_seen_train, tokens_seen_val, epochs_train, epochs_val = [], [], [], []
     batch_sizes_train, batch_sizes_val = [], []
     seq_lengths_train, seq_lengths_val = [], []
+    lrs_train, lrs_val, weight_decays_train, weight_decays_val = [], [], [], []
 
     #################
     # Training Mode #
@@ -615,6 +616,8 @@ def train(net: SpeedyLangNet | None = None, **settings):
             batch_sizes_train.append(curr_batchsize)
             seq_lengths_train.append(curr_length)
             cumulative_time_train.append(t_secs)
+            lrs_train.append(opt.param_groups[0]['lr'])
+            weight_decays_train.append(opt.param_groups[0]['weight_decay'])
             if settings['log_wandb']:
                 wandb.log({
                     'train_loss': train_loss, 
@@ -625,7 +628,9 @@ def train(net: SpeedyLangNet | None = None, **settings):
                     'epoch_train': epoch,
                     'batch_size_train': curr_batchsize,
                     'sequence_length_train': curr_length,
-                    'cumulative_time_train': t_secs
+                    'cumulative_time_train': t_secs,
+                    'lr_train': opt.param_groups[0]['lr'],
+                    'weight_decay_train': opt.param_groups[0]['weight_decay'],
                 })
 
 
@@ -686,6 +691,8 @@ def train(net: SpeedyLangNet | None = None, **settings):
             batch_sizes_val.append(curr_batchsize)
             seq_lengths_val.append(curr_length)
             cumulative_time_val.append(t_secs)
+            lrs_val.append(opt.param_groups[0]['lr'])
+            weight_decays_val.append(opt.param_groups[0]['weight_decay'])
             
             if settings['log_wandb']:
                 wandb.log({
@@ -696,7 +703,9 @@ def train(net: SpeedyLangNet | None = None, **settings):
                     'epoch_val': epoch,
                     'batch_size_val': curr_batchsize,
                     'sequence_length_val': curr_length,
-                    'cumulative_time_val': t_secs
+                    'cumulative_time_val': t_secs,
+                    'lr_val': opt.param_groups[0]['lr'],
+                    'weight_decay_val': opt.param_groups[0]['weight_decay'],
                 })
 
             if curr_step >= settings['num_steps_val'] or epoch >= settings['num_epochs_val'] or tokens_seen >= settings['num_tokens_val']:
@@ -720,7 +729,8 @@ def train(net: SpeedyLangNet | None = None, **settings):
         tokens_seen_train, tokens_seen_val, 
         epochs_train, epochs_val,
         batch_sizes_train, batch_sizes_val,
-        seq_lengths_train, seq_lengths_val
+        seq_lengths_train, seq_lengths_val,
+        lrs_train, lrs_val, weight_decays_train, weight_decays_val,
     )
 
 
@@ -850,7 +860,8 @@ def main():
                     tokens_seen_train, tokens_seen_val, 
                     epochs_train, epochs_val,
                     batch_sizes_train, batch_sizes_val,
-                    seq_lengths_train, seq_lengths_val
+                    seq_lengths_train, seq_lengths_val,
+                    lrs_train, lrs_val, weight_decays_train, weight_decays_val,
             ) = train(
                 net=None,  # you can give this the net and it will just continue training on it
                 depth=depth,
@@ -906,6 +917,10 @@ def main():
                 "batch_sizes_val": [str(batch_sizes_val)],
                 "seq_lengths_train": [str(seq_lengths_train)],
                 "seq_lengths_val": [str(seq_lengths_val)],
+                "lrs_train": [str(lrs_train)],
+                "lrs_val": [str(lrs_val)],
+                "weight_decays_train": [str(weight_decays_train)],
+                "weight_decays_val": [str(weight_decays_val)],
             }
             df = pl.DataFrame(results)
 
