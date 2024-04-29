@@ -122,22 +122,26 @@ def change_gpu_token_capacity(factor: float):
     gpu_token_capacity = int(factor * 114688)
 
 
-def change_model_scale(scale: float, depth: int | None = None, width: int | None = None) -> tuple[int, int]:
+def change_model_scale(
+        scale: float, depth: int | None = None, 
+        width: int | None = None, 
+        num_heads: int = 1,
+) -> tuple[int, int]:
     global model_scale, tokens_per_batch_capacity, hyp, gpu_token_capacity
     if depth is not None or width is not None:
         assert width is not None and depth is not None
         width = to_nearest_64(width)
         depth = depth
     else:
-        width = to_nearest_64(384 * math.log2(1.+model_scale))
-        depth = round(8 * math.log2(1.+model_scale))
+        width = to_nearest_64(384 * math.log2(1.+scale))
+        depth = round(8 * math.log2(1.+scale))
 
     hyp['net']['residual_depth'] = width
     hyp['net']['num_blocks'] = depth
 
 
     # Measure number of parameters
-    net = make_net(dict(depth=depth, width=width))
+    net = make_net(dict(depth=depth, width=width, linear_value=False, num_heads=num_heads))
     num_params = sum(p.numel() for p in net.parameters() if p.requires_grad)
     num_non_embedding_params = sum(p.numel() for m in (net.net_dict['attn_layers'] + net.net_dict['norm']) for p in m.parameters())
     del net
@@ -799,7 +803,7 @@ def main():
 
     for setting_num, (model_scale, depth, width, num_heads, linear_value) in enumerate(settings):
         seed = args.seed  # reset seed so that every setting goes through the same seeds over the different runs
-        num_params, num_non_embedding_params = change_model_scale(model_scale, depth, width)
+        num_params, num_non_embedding_params = change_model_scale(model_scale, depth, width, num_heads)
         for run_num in range(args.num_runs):
             cumulative_run_num += 1
 
