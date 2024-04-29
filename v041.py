@@ -815,10 +815,13 @@ def main():
             title = (
                 f"::: STARTING RUN {cumulative_run_num}/{total_num_runs} "
                 f"(Setting {setting_num+1}/{len(settings)}, Run {run_num+1}/{args.num_runs})\n"
-                f":::    {num_heads=}\n:::    {linear_value=}\n"
+                f":::    {num_heads=}\n"
+                f":::    {linear_value=}\n"
                 f":::    {model_scale=:.4f}\n"
-                f":::    {depth=}\n:::    {width=}\n"
-                f":::    {num_params=}\n:::    {num_non_embedding_params=}"
+                f":::    {depth=}\n"
+                f":::    {width=}\n"
+                f":::    {num_params=}\n"
+                f":::    {num_non_embedding_params=}"
             )
             max_len = max(len(line) for line in title.split("\n"))
             title = "\n".join([line + " " * (max_len - len(line)) + " :::" for line in title.split("\n")])
@@ -826,8 +829,10 @@ def main():
             title = "\n\n" + "\n".join([sep, title, sep]) + "\n\n"
             print(title)
 
+            # Seed
             torch.manual_seed(seed)
 
+            # Train
             (
                     net, last_val_loss,
                     train_losses, val_losses, train_accs, val_accs, train_pplxs, val_pplxs, 
@@ -851,7 +856,8 @@ def main():
                 max_epochs_between_vals=args.max_epochs_between_vals,
                 log_wandb=args.log_wandb,
                 wandb_project=args.wandb_project,
-                num_params=num_params,  # include everything you want to log to wandb here
+                # include everything you want to log to wandb below, even if it's not used in the training function
+                num_params=num_params,
                 model_scale=model_scale,
                 gpu_token_capacity=gpu_token_capacity,
                 tokens_per_batch_capacity=tokens_per_batch_capacity,
