@@ -483,7 +483,6 @@ def train(net: SpeedyLangNet | None = None, **settings):
 
     # Get network
     net = net or make_net(settings)
-    settings.pop('net')  # dont want to log the net in wandb
 
     # Init wandb 
     if settings['log_wandb']:
