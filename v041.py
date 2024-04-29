@@ -783,9 +783,9 @@ def get_settings(args: argparse.Namespace) -> list:
     # potentially, not all args should appear with all others,
     # and you can handle that here.
 
-    return list(itertools.product([
+    return list(itertools.product(
         args.model_scale, args.depth, args.width, args.num_heads, args.linear_value
-    ]))
+    ))
 
 
 def main():
