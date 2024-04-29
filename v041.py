@@ -733,7 +733,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--model_scale", type=float, default=1.0, nargs="+", help="Scale the model size. Can be overwritten by setting depth and width")
     parser.add_argument("--depth", type=int, default=-1, help="Depth of the model. Automatically set if <1 (via model_scale)")
     parser.add_argument("--width", type=int, default=-1, help="Width of the model. Automatically set if <1 (via model_scale)")
-    parser.add_argument("--num_heads", type=int, default=1, help="Number of attention heads.")
+    parser.add_argument("--num_heads", type=int, default=1, nargs="+", help="Number of attention heads.")
     parser.add_argument(
         "--linear_value",
         type=int, default=0, nargs="+",
@@ -784,7 +784,7 @@ def get_settings(args: argparse.Namespace) -> list:
     # and you can handle that here.
 
     return list(itertools.product([
-        args.model_scale, args.depth, args.width, args.num_heads, args.lienar_value
+        args.model_scale, args.depth, args.width, args.num_heads, args.linear_value
     ]))
 
 
