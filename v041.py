@@ -595,9 +595,9 @@ def train(net: SpeedyLangNet | None = None, **settings):
         do_eval = (
             (curr_microbatch_step % discrete_sampled_microbatch_steps == 0) 
             and (curr_step % hyp['opt']['eval_every'] == 0)
-        ) or (epoch - epochs_train[-1]) >= settings['max_epochs_between_vals']
+        ) or (epoch - epochs_train[-1]) >= settings['max_epochs_between_evals']
             
-        if curr_step >= settings['num_steps_train'] or epoch >= settings['num_epochs_train'] or tokens_seen >= settings['num_tokens_train']:
+        if curr_step >= settings['max_steps'] or epoch >= settings['max_epochs'] or tokens_seen >= settings['max_tokens']:
             do_eval=True
             stop_run = True
 
@@ -712,8 +712,6 @@ def train(net: SpeedyLangNet | None = None, **settings):
                     'weight_decay_val': opt.param_groups[0]['weight_decay'],
                 })
 
-            if curr_step >= settings['num_steps_val'] or epoch >= settings['num_epochs_val'] or tokens_seen >= settings['num_tokens_val']:
-                stop_run = True
             # Print out our training details
             ## We also check to see if we're on our final eval loop (assum that max_curr_step lines up with the eval_every value) so we can print the 'bottom' of the table for each round.
             is_final_eval = stop_run or (curr_step >= hyp['opt']['total_train_steps']) # If we're at the end of training, add a line after the end of the run
@@ -743,40 +741,133 @@ def get_args() -> argparse.Namespace:
 
     # DEFINE ARGS
     # Logging
-    parser.add_argument("-l", "--log_csv", action="store_true", help="Log results to csv-file.")
-    parser.add_argument("--append", action="store_true", help="If set, the savefile won't be overwritten but appended to.")
-    parser.add_argument("--logfile", type=str, default="results_041.csv", help="Log the results to this file.")
-    parser.add_argument("-w", "--log_wandb", action="store_true", help="Log results to Weights & Biases.")
-    parser.add_argument("--wandb_project", type=str, default="speedy-lang", help="Weights & Biases project to log to.")
+    parser.add_argument(
+        "-l", "--log_csv", 
+        action="store_true", 
+        help="Log results to csv-file. FLAG"
+    )
+    parser.add_argument(
+        "--append", 
+        action="store_true", 
+        help="If set, the logfile won't be overwritten but appended to, if it already exists. FLAG"
+    )
+    parser.add_argument(
+        "--logfile", 
+        type=str,
+        default="results_041.csv", 
+        help="Log the results to this file. "
+        "TYPE: str; DEFAULT: 'results_041.csv'"
+    )
+    parser.add_argument(
+        "-w", "--log_wandb", 
+        action="store_true", 
+        help="Log results to Weights & Biases. FLAG"
+    )
+    parser.add_argument(
+        "--wandb_project",
+        type=str, default="speedy-lang", 
+        help="Weights & Biases project to log to."
+        "TYPE: str; DEFAULT: 'speedy-lang'"
+    )
 
     # How many runs per setting, how many steps/epochs/tokens to train/validate for per run
-    parser.add_argument("--num_runs", type=int, default=1, help="Number of runs to run each experiment for.")
-    parser.add_argument("--num_steps_train", type=int, default=int(1e9), help="Number of steps to train the model. Very high by default so that epochs are the determining factor by default.")
-    parser.add_argument("--num_steps_val", type=int, default=int(1e9), help="Stop training after this many validation at step>=this. Very high by default so that epochs are the determining factor by default.")
-    parser.add_argument("--num_epochs_train", type=int, default=3, help="Number of epochs after which to break when printing training details. Higher than num_epochs_val so that training ends with validation.")
-    parser.add_argument("--num_epochs_val", type=int, default=1, help="Number of epochs after which to break when validating.")
-    parser.add_argument("--num_tokens_train", type=int, default=int(1e12), help="Number of tokens after which to break when printing training details.")
-    parser.add_argument("--num_tokens_val", type=int, default=int(1e12), help="Number of tokens after which to break when validating.")
-    parser.add_argument("--max_epochs_between_vals", type=float, default=0.25, help="Validate at after at most this many epochs.")
+    parser.add_argument(
+        "--num_runs", 
+        type=int, default=1, 
+        help="Number of times to run each experiment for. "
+        "Each run for a single setting will start with a different seed, "
+        "but over the different settings, the seeds are repeated run-by-run to get comparable results. "
+        "TYPE: int; DEFAULT: 1"
+    )
+    parser.add_argument(
+        "--max_steps", 
+        type=int, default=int(1e9), 
+        help="If step>=max_steps, stop training and eval one last time. "
+        "Very high by default so that epochs are the determining factor by default. "
+        "One step does *not* correspond to a constant number of tokens, "
+        "as the batch size and sequence length are adjusted dynamically. "
+        "TYPE: int; DEFAULT: int(1e9)"
+    )
+    parser.add_argument(
+        "--max_epochs", 
+        type=int, default=1, 
+        help="If epoch>=max_epochs, stop training and eval one last time. "
+        "By default, this is the determining factor for training length. "
+        "TYPE: int; DEFAULT: 1"
+    )
+    parser.add_argument(
+        "--max_tokens", 
+        type=int, default=int(1e12), 
+        help="If token>=max_tokens, stop training and eval one last time. "
+        "Very high by default so that epochs are the determining factor by default. "
+        "TYPE: int; DEFAULT: int(1e12)"
+    )
+    parser.add_argument(
+        "--max_epochs_between_evals", 
+        type=float, default=0.25, 
+        help="Eval at after at most this many epochs. "
+        "TYPE: float; DEFAULT: 0.25"
+    )
 
     # Model settings
-    parser.add_argument("--model_scale", type=float, default=1.0, nargs="+", help="Scale the model size. Can be overwritten by setting depth and width")
-    parser.add_argument("--depth", type=int, default=-1, help="Depth of the model. Automatically set if <1 (via model_scale)")
-    parser.add_argument("--width", type=int, default=-1, help="Width of the model. Automatically set if <1 (via model_scale)")
-    parser.add_argument("--num_heads", type=int, default=1, nargs="+", help="Number of attention heads.")
+    parser.add_argument(
+        "--model_scale", 
+        type=float, default=1.0, nargs="+", 
+        help="Scale the model size. Can be overwritten by setting depth and width. "
+        "You can provide multiple values to test multiple scales. "
+        "TYPE: float; DEFAULT: 1.0"
+    )
+    parser.add_argument(
+        "--depth", 
+        type=int, default=-1, nargs="+", 
+        help="Depth of the model. If <1, will be automatically determined via model_scale. "
+        "You can provide multiple values to test multiple depths. "
+        "TYPE: int; DEFAULT: -1"
+    )
+    parser.add_argument(
+        "--width", 
+        type=int, default=-1, nargs="+",
+        help="Width of the model. If <1, will be automatically determined via model_scale. "
+        "Will be automatically rounded to the nearest multiple of 64. "
+        "You can provide multiple values to test multiple widths. "
+        "TYPE: int; DEFAULT: -1"
+    )
+    parser.add_argument(
+        "--num_heads", 
+        type=int, default=1, nargs="+", 
+        help="Number of attention heads. "
+        "The original implementation is single-headed, but this might prove valuable for some experiments. "
+        "You can provide multiple values to test multiple numbers of heads. "
+        "TYPE: int; DEFAULT: 1"
+    )
     parser.add_argument(
         "--linear_value",
         type=int, default=0, nargs="+",
         help=
-        "If 0, use Gelu on the value in attention. "
+        "If 0, use Gelu on the value in attention (the default setting of this package), else don't. "
         "If you provide several values (for example, 0 1 2 3 4), "
         "will be reduced to their booleans without repetition (so False, True). "
         "TYPE: int; DEFAULT: 0"
     )
 
     # Other settings
-    parser.add_argument("--gpu_capacity_scalar", type=float, default=1.0, help="1.0 is for a 40GB A100; reduce or increase as needed. You may need to include some slack.")
-    parser.add_argument("--seed", type=int, default=100, help="Seed for the random number generator.")
+    parser.add_argument(
+        "--gpu_capacity_scalar", 
+        type=float, default=1.0, 
+        help="1.0 is for a 40GB A100; reduce or increase as needed. You may need to include some slack. "
+        "TYPE: float; DEFAULT: 1.0"
+    )
+    parser.add_argument(
+        "--seed", 
+        type=int, default=100, 
+        help="Seed for the random number generator. "
+        "This determines the initial seed per experiment. "
+        "At each run, 1 is added to the seed, until the next setting. "
+        "For example: you have two settings and 3 runs each, with an initial seed of 100. "
+        "Then the seeds for the 3 runs of setting 1 will be [100, 101, 102], "
+        "and the seeds for the 3 runs of setting 2 will be identical to make them comparable. "
+        "TYPE: int; DEFAULT: 100"
+    )
 
     # PARSE ARGS
     args = parser.parse_args()
@@ -872,13 +963,10 @@ def main():
                 width=width,
                 num_heads=num_heads,
                 linear_value=linear_value,
-                num_epochs_train=args.num_epochs_train,
-                num_epochs_val=args.num_epochs_val,
-                num_steps_train=args.num_steps_train,
-                num_steps_val=args.num_steps_val,
-                num_tokens_train=args.num_tokens_train,
-                num_tokens_val=args.num_tokens_val,
-                max_epochs_between_vals=args.max_epochs_between_vals,
+                max_epochs=args.max_epochs,
+                max_steps=args.max_steps,
+                max_tokens=args.max_tokens,
+                max_epochs_between_evals=args.max_epochs_between_evals,
                 log_wandb=args.log_wandb,
                 wandb_project=args.wandb_project,
                 # include everything you want to log to wandb below, even if it's not used in the training function
