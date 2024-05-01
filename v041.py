@@ -901,13 +901,18 @@ def get_args() -> argparse.Namespace:
     else:
         print("\n[WARNING] Scaling by depth and width explicitly. Ignoring model_scale (will be automatically determined) [WARNING]\n")
 
-    assert ((w % h) == 0 for w in args.width for h in args.num_heads), "Width must be divisible by the number of heads."
-    # TODO: instead, filter out the combinations that don't work in get_settings
-
     # PRINT ARGS --> CHECK IF EVERYTHING WORKED AS INTENDED
     print(args.__dict__)
 
     return args
+
+
+def setting_violates_rules(**setting) -> bool:
+    # You can add any rules here that you want to filter out.
+    if setting["width"] % setting["num_heads"] != 0:
+        return True
+    
+    return False
 
 
 def get_settings(args: argparse.Namespace) -> list:
@@ -915,9 +920,23 @@ def get_settings(args: argparse.Namespace) -> list:
     # potentially, not all args should appear with all others,
     # and you can handle that here.
 
-    return list(itertools.product(
+    settings =  list(itertools.product(
         args.model_scale, args.depth, args.width, args.num_heads, args.linear_value
     ))
+
+    settings = [
+        (model_scale, depth, width, num_heads, linear_value) 
+        for model_scale, depth, width, num_heads, linear_value in settings 
+        if not setting_violates_rules(
+            model_scale=model_scale, 
+            depth=depth, 
+            width=width, 
+            num_heads=num_heads, 
+            linear_value=linear_value,
+        )
+    ]
+
+    return settings
 
 
 def print_settings(settings):
