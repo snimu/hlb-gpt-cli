@@ -597,7 +597,12 @@ def train(net: SpeedyLangNet | None = None, **settings):
             and (curr_step % hyp['opt']['eval_every'] == 0)
         ) or (epoch - epochs_train[-1]) >= settings['max_epochs_between_evals']
             
-        if curr_step >= settings['max_steps'] or epoch >= settings['max_epochs'] or tokens_seen >= settings['max_tokens']:
+        if (
+                curr_step >= settings['max_steps'] 
+                or epoch >= settings['max_epochs'] 
+                or tokens_seen >= settings['max_tokens']
+                or t_secs >= settings['max_time_seconds']
+        ):
             do_eval=True
             stop_run = True
 
@@ -802,7 +807,13 @@ def get_args() -> argparse.Namespace:
         "Very high by default so that epochs are the determining factor by default. "
         "TYPE: int; DEFAULT: int(1e12)"
     )
-    # TODO: max_time
+    parser.add_argument(
+        "--max_time_seconds",
+        type=int, default=int(1e9),
+        help="If t_secs>=max_time_seconds, stop training and eval one last time. "
+        "Very high by default so that epochs are the determining factor by default. "
+        "TYPE: int; DEFAULT: int(1e9)"
+    )
     parser.add_argument(
         "--max_epochs_between_evals", 
         type=float, default=0.25, 
@@ -1012,6 +1023,7 @@ def main():
                 max_epochs=args.max_epochs,
                 max_steps=args.max_steps,
                 max_tokens=args.max_tokens,
+                max_time_seconds=args.max_time_seconds,
                 max_epochs_between_evals=args.max_epochs_between_evals,
                 log_wandb=args.log_wandb,
                 wandb_project=args.wandb_project,
