@@ -802,6 +802,7 @@ def get_args() -> argparse.Namespace:
         "Very high by default so that epochs are the determining factor by default. "
         "TYPE: int; DEFAULT: int(1e12)"
     )
+    # TODO: max_time
     parser.add_argument(
         "--max_epochs_between_evals", 
         type=float, default=0.25, 
@@ -868,6 +869,15 @@ def get_args() -> argparse.Namespace:
         "and the seeds for the 3 runs of setting 2 will be identical to make them comparable. "
         "TYPE: int; DEFAULT: 100"
     )
+    parser.add_argument(
+        "--review_settings",
+        action="store_true",
+        help="Print the settings before proceeding to review them. "
+        "Useful because some settings might be pre-filtered "
+        "(for example, if you have different widths and num_heads, "
+        "only the combinations where width is divisible by num_heads are used). "
+        "If something is wrong with the settings, you can easily see it here, return early, and fix it. FLAG"
+    )
 
     # PARSE ARGS
     args = parser.parse_args()
@@ -892,6 +902,7 @@ def get_args() -> argparse.Namespace:
         print("\n[WARNING] Scaling by depth and width explicitly. Ignoring model_scale (will be automatically determined) [WARNING]\n")
 
     assert ((w % h) == 0 for w in args.width for h in args.num_heads), "Width must be divisible by the number of heads."
+    # TODO: instead, filter out the combinations that don't work in get_settings
 
     # PRINT ARGS --> CHECK IF EVERYTHING WORKED AS INTENDED
     print(args.__dict__)
@@ -909,9 +920,25 @@ def get_settings(args: argparse.Namespace) -> list:
     ))
 
 
+def print_settings(settings):
+    title = ":" * 10 + " SETTINGS " + ":" * 10
+    sep = ":" * len(title)
+    print("\n\n" + sep + "\n" + title + "\n" + sep + "\n\n")
+    for i, setting in enumerate(settings):
+        print(f"Setting {i+1}/{len(settings)}:\n{setting}\n\n")
+
+
 def main():
     args = get_args()
     settings = get_settings(args)
+
+    if args.review_settings:
+        print_settings(settings)
+        proceed = input("Proceed? [y/n] ")
+        if proceed.lower() != "y":
+            print("Aborting.")
+            return
+
     cumulative_run_num = 0
     total_num_runs = int(len(settings) * args.num_runs)
 
