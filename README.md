@@ -5,7 +5,7 @@ CLI controllable version of hlb-gpt by tysam-code
 [Fern](https://github.com/tysam-code)'s [hlb-gpt](https://github.com/tysam-code/hlb-gpt)
 is a package for training transformers really, really fast, to high quality.
 
-This package extends that one that one to be easily controllable over the CLI.
+This package extends that one that one to be easily controllable over the CLI. It also adds extensive logging.
 
 **Why would you want that?**
 
