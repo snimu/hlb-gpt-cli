@@ -1034,6 +1034,7 @@ def main():
                 wandb_project=args.wandb_project,
                 # include everything you want to log to wandb below, even if it's not used in the training function
                 num_params=num_params,
+                num_non_embedding_params=num_non_embedding_params,
                 model_scale=model_scale,
                 gpu_token_capacity=gpu_token_capacity,
                 tokens_per_batch_capacity=tokens_per_batch_capacity,
@@ -1051,6 +1052,7 @@ def main():
                 "depth": [hyp['net']['num_blocks']],
                 "width": [hyp['net']['residual_depth']],
                 "num_params": [num_params],
+                "num_non_embedding_params": [num_non_embedding_params],
                 "num_heads": [num_heads],
                 "linear_value": [linear_value],
                 "seed": [seed],
