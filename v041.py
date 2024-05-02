@@ -950,12 +950,14 @@ def get_settings(args: argparse.Namespace) -> list:
     return settings
 
 
-def print_settings(settings):
+def print_settings(settings: list[tuple], names: list[str] = None):
+    assert len(names == len(settings[0])), "Please provide all setting names to print_settings."
     title = ":" * 10 + " SETTINGS " + ":" * 10
     sep = ":" * len(title)
     print("\n\n" + sep + "\n" + title + "\n" + sep + "\n\n")
     for i, setting in enumerate(settings):
-        print(f"Setting {i+1}/{len(settings)}:\n{setting}\n\n")
+        named_settings = [f"{n}={s}" for n, s in zip(names, setting)]
+        print(f"Setting {i+1}/{len(settings)}:\n{'\n'.join(named_settings)}\n\n")
 
 
 def main():
@@ -963,7 +965,7 @@ def main():
     settings = get_settings(args)
 
     if args.review_settings:
-        print_settings(settings)
+        print_settings(settings, names=["model_scale", "depth", "width", "num_heads", "linear_value"])
         proceed = input("Proceed? [y/n] ")
         if proceed.lower() != "y":
             print("Aborting.")
