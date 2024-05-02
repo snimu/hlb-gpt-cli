@@ -920,7 +920,10 @@ def get_args() -> argparse.Namespace:
 
 def setting_violates_rules(**setting) -> bool:
     # You can add any rules here that you want to filter out.
-    if setting["width"] % setting["num_heads"] != 0:
+
+    # Filter out all settings where the width is not divisible by the number of heads
+    width = setting['width'] or to_nearest_64(384 * math.log2(1.+setting['model_scale']))
+    if width % setting["num_heads"] != 0:
         return True
     
     return False
