@@ -144,6 +144,49 @@ Here are the CLI-args that you can currently use to run this script.
         and the seeds for the 3 runs of setting 2 will be identical to make them comparable.
 
 
+## What is being logged?
+
+By default, the following things are being logged:
+
+*Config stuff:*
+
+- **model_scale**: The scale of the model relative to the default of width=384 and depth=8
+- **depth**: The number of transformer blocks in the network
+- **width**: The width of the residual stream
+- **num_params**: The total number of parameters in the model
+- **num_non_embedding_params**: The number of non-embedding parameters
+- **num_heads**: The number of attention heads
+- **linear_value**: Whether or not linear values are used in the run
+- **seed**: The actual seed for each run
+- **run_num**: The run number
+
+*Results:*
+
+- **train_loss**: The train losses
+- **val_loss**: The validation losses
+- **train_acc**: The training accuracies
+- **val_acc**: The validation accuracies
+- **train_pplx**: The training perplexity
+- **val_pplx**: The validation perplexity
+- **grad_norm**: The L2-norm of the model gradients. Each entry corresponds to one entry in training, not validation
+- **cumulative_time_train**: Cumulative time for each recorded training step
+- **cumulative_time_val**: Cumulative time for each recorded validation step
+- **tokens_seen_train**: Cumulative number of tokens seen during training
+- **tokens_seen_val**: Cumulative number of tokens seen during validation
+- **epochs_train**: The fractional epoch at each recorded training step
+- **epochs_val**: The fractional epoch at each recorded validation step
+- **batch_sizes_train**: The batch size at each recorded training step; recorded because it is dynamically adjusted
+- **batch_sizes_val**: The batch size at each recorded validation step
+- **seq_lengths_train**: The sequence length at each recorded training step
+- **seq_lengths_val**: The sequence length at each recorded validation step
+- **lrs_train**: The learning rates corresponding to each recorded training step; 
+    different params have different learning rates.
+    Their relative scales are recorded in hyp and not touched, so you can calculate the actual lr from them.
+    TOOD: automatically record the learning rates for the different parameters
+- **lrs_val**: The learning rates corresponding to each recorded validation step
+- **weight_decays_train**: The weight decays corresponding to each recorded training step
+- **weight_decays_val**: The weight decays corresponding to each recorded validation step
+
 ## How to extend the code
 
 Will write more about this after some refactoring to make this easier. TODO
