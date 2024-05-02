@@ -7,14 +7,14 @@ is a package for training transformers really, really fast, to high quality.
 
 This package extends that one that one to be easily controllable over the CLI. It also adds extensive logging.
 
-**Why would you want that?**
+## Why does this exist?
 
 It makes ablations really easy. 
 
 Just provide a whole bunch of settings over the command-line, and automatically run highly repeatable experiments at different model scales, and log their results in high detail
 to either wandb and/or a local .csv-file.
 
-**Example**
+## Example
 
 How about we ablate the number of attention heads over different widths and depths?
 You could run:
