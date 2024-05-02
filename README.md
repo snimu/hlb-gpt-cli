@@ -9,7 +9,8 @@ This package extends that one that one to be easily controllable over the CLI. I
 
 ## Why does this exist?
 
-It makes ablations really easy. 
+1. It makes ablations really easy
+2. It gives you extremely detailed logs
 
 Just provide a whole bunch of settings over the command-line, and automatically run highly repeatable experiments at different model scales, and log their results in high detail
 to either wandb and/or a local .csv-file.
