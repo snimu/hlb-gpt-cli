@@ -58,6 +58,7 @@ Here are the CLI-args that you can currently use to run this script.
 
 - **-l, --log_csv** (FLAG) 
     - If set, log results to .csv-file.
+    - TODO: change to -c, --log_csv for consistency with the -w option
 - **--append** (FLAG) 
     - If set, the previous logfile won't be overwritten but appended to, if it already exists.
 - **--logfile** (TYPE: str, DEFAULT: 'results_041.csv')
@@ -154,3 +155,20 @@ Will write more about this after some refactoring to make this easier. TODO
 - [ ] Reformat the code to make it more hackable
 - [ ] Write v030.py, with an interface that is consistent with that of v041.py
 - [ ] Make plotting utils for the .csv-files available
+
+## Citation
+
+As already mentioned, the code is based on [Fern](https://github.com/tysam-code)'s [hlb-gpt](https://github.com/tysam-code/hlb-gpt):
+
+```
+cff-version: 1.2.0
+message: "Citations would be appreciated if you end up using this tool! I currently go by Fern, no last name given."
+authors:
+  given-names: "Fern"
+title: "hlb-gpt"
+version: 0.4.1
+date-released: 2023-03-05
+url: "https://github.com/tysam-code/hlb-gpt"
+```
+
+If you want to cite me as well, just cite this repo and my name & GitHub handle.
