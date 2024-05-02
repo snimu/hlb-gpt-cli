@@ -147,13 +147,20 @@ Here are the CLI-args that you can currently use to run this script.
 
 Will write more about this after some refactoring to make this easier. TODO
 
+## Plotting the .csv
+
+I have provided some utilities for plotting the results in the .csv-files in *plot_results.py*, if you want those.
+
+There is also an `example_plot_fct`-function, so that you can see how the utils are meant to work together.
+It provides great flexibility in plotting your sweeps.
+
 ## Plans
 
 - [ ] Make the dataloader independent of the dataset, or at least easily changeable
 - [ ] Improve the CLI interface based on community feedback, if any is incoming
 - [ ] Reformat the code to make it more hackable
 - [ ] Write v030.py, with an interface that is consistent with that of v041.py
-- [ ] Make plotting utils for the .csv-files available
+- [x] Make plotting utils for the .csv-files available
 
 ## Citation
 
