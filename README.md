@@ -20,12 +20,12 @@ How about we ablate the number of attention heads over different widths and dept
 You could run:
 
 ```bash
-python v041.py -lw --wandb_project test --seed 1000 --num_runs 5 --max_epochs 5 --depth 4 8 16 32 --width 192 384 --num_heads 1 3 6
+python v041.py -cw --wandb_project test --seed 1000 --num_runs 5 --max_epochs 5 --depth 4 8 16 32 --width 192 384 --num_heads 1 3 6
 ```
 
 What does that do?
 
-- `-lw`: Equivalent to `--log_csv --log_wandb`. Log both to a .csv-file (by default, "results_041.csv"), and to a wandb-project.
+- `-cw`: Equivalent to `--log_csv --log_wandb`. Log both to a .csv-file (by default, "results_041.csv"), and to a wandb-project.
 - `--wandb_project test`: Log to the wandb-project "test"
 - `--seed 1000`: Manually set the seed. 
 - `--num_runs 5`: For each setting, do train 5 times. Each run is initialized with a different seed, starting with 
@@ -56,9 +56,8 @@ So far, I only implemented a CLI interfacte to the latter, under v041.py, though
 
 Here are the CLI-args that you can currently use to run this script.
 
-- **-l, --log_csv** (FLAG) 
+- **-c, --log_csv** (FLAG) 
     - If set, log results to .csv-file.
-    - TODO: change to -c, --log_csv for consistency with the -w option
 - **--append** (FLAG) 
     - If set, the previous logfile won't be overwritten but appended to, if it already exists.
 - **--logfile** (TYPE: str, DEFAULT: 'results_041.csv')

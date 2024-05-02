@@ -747,7 +747,7 @@ def get_args() -> argparse.Namespace:
     # DEFINE ARGS
     # Logging
     parser.add_argument(
-        "-l", "--log_csv", 
+        "-c", "--log_csv", 
         action="store_true", 
         help="Log results to csv-file. FLAG"
     )
