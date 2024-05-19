@@ -954,7 +954,7 @@ def get_settings(args: argparse.Namespace) -> list:
 
 
 def print_settings(settings: list[tuple], names: list[str] = None):
-    assert len(names == len(settings[0])), "Please provide all setting names to print_settings."
+    assert len(names) == len(settings[0]), "Please provide all setting names to print_settings."
     title = ":" * 10 + " SETTINGS " + ":" * 10
     sep = ":" * len(title)
     print("\n\n" + sep + "\n" + title + "\n" + sep + "\n\n")
