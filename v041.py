@@ -959,8 +959,8 @@ def print_settings(settings: list[tuple], names: list[str] = None):
     sep = ":" * len(title)
     print("\n\n" + sep + "\n" + title + "\n" + sep + "\n\n")
     for i, setting in enumerate(settings):
-        named_settings = [f"{n}={s}" for n, s in zip(names, setting)]
-        print(f"Setting {i+1}/{len(settings)}:\n{'\n'.join(named_settings)}\n\n")
+        named_settings = "\n".join([f"{n}={s}" for n, s in zip(names, setting)])
+        print(f"Setting {i+1}/{len(settings)}:\n{named_settings}\n\n")
 
 
 def main():
