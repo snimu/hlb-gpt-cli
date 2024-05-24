@@ -581,7 +581,7 @@ def train(net: SpeedyLangNet | None = None, **settings):
     stop_run = False
 
     # Main loop. Most of the complexity here is in the dynamic growing scheduler(s).
-    while curr_step < hyp['opt']['total_train_steps']:
+    while True:
         inputs, targets = get_batch(data, key='train', batchsize=curr_batchsize, length=curr_length)
 
         outputs = net(inputs)
