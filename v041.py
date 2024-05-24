@@ -991,14 +991,14 @@ def main():
             # Print some feedback
             title = (
                 f"::: STARTING RUN {cumulative_run_num}/{total_num_runs} "
-                f"(Setting {setting_num+1}/{len(settings)}, Run {run_num+1}/{args.num_runs})\n"
-                f":::    {num_heads=}\n"
-                f":::    {linear_value=}\n"
-                f":::    {model_scale=:.4f}\n"
-                f":::    {depth=}\n"
-                f":::    {width=}\n"
-                f":::    {num_params=}\n"
-                f":::    {num_non_embedding_params=}"
+                f"(Setting {setting_num+1}/{len(settings)}, Run {run_num+1}/{args.num_runs})"
+                f"\n:::    {num_heads=}"
+                f"\n:::    {linear_value=}"
+                f"\n:::    {model_scale=:.4f}"
+                f"\n:::    {depth=}"
+                f"\n:::    {width=}"
+                f"\n:::    {num_params=}"
+                f"\n:::    {num_non_embedding_params=}"
             )
             max_len = max(len(line) for line in title.split("\n"))
             title = "\n".join([line + " " * (max_len - len(line)) + " :::" for line in title.split("\n")])
