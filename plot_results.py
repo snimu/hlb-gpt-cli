@@ -38,7 +38,7 @@ def load_xs_ys_avg_y(
         depth: int | None = None,
         width: int | None = None,
         num_params: int | None = None,
-        linear_values: bool | None = None,
+        linear_value: bool | None = None,
         num_heads: int | None = None,
         run_num: int | None = None,
         seed: int | None = None,
@@ -56,8 +56,8 @@ def load_xs_ys_avg_y(
         filters &= (pl.col("width") == width)
     if num_params is not None:
         filters &= (pl.col("num_params") == num_params)
-    if linear_values is not None:
-        filters &= (pl.col("linear_values") == linear_values)
+    if linear_value is not None:
+        filters &= (pl.col("linear_value") == linear_value)
     if num_heads is not None:
         filters &= (pl.col("num_heads") == num_heads)
     if run_num is not None:
@@ -239,19 +239,19 @@ def example_plot_fct(
         depth: int | None = 8,
         width: int | None = 384,
         num_heads: int | None = None,
-        linear_values: bool | None = False,
+        linear_value: bool | None = False,
         to_plot: Literal["val_losses", "train_losses", "val_accs", "train_accs", "val_pplxs"] = "val_losses",
         plot_over: Literal["step", "epoch", "epoch_unique_token", "token", "time_sec"] = "epoch",
         show: bool = True,
         loglog: bool = False,
         plot_all: bool = False,
 ) -> None:
-    settings = get_unique_settings(file, ["num_heads", "linear_values", "depth", "width"])
+    settings = get_unique_settings(file, ["num_heads", "linear_value", "depth", "width"])
 
     if num_heads is not None:
         settings = [(nh, lv, d, w) for nh, lv, d, w in settings if nh == num_heads]
-    if linear_values is not None:
-        settings = [(nh, lv, d, w) for nh, lv, d, w in settings if lv == linear_values]
+    if linear_value is not None:
+        settings = [(nh, lv, d, w) for nh, lv, d, w in settings if lv == linear_value]
     if depth is not None:
         settings = [(nh, lv, d, w) for nh, lv, d, w in settings if d == depth]
     if width is not None:
@@ -259,13 +259,13 @@ def example_plot_fct(
 
     colors = generate_distinct_colors(len(settings))
 
-    for color, (num_heads_, linear_values_, depth_, width_) in zip(colors, settings):
+    for color, (num_heads_, linear_value_, depth_, width_) in zip(colors, settings):
             xs, ys, avg_ys = load_xs_ys_avg_y(
                 file,
                 depth=depth_,
                 width=width_,
                 num_heads=num_heads_,
-                linear_values=linear_values_,
+                linear_value=linear_value_,
                 to_plot=to_plot,
                 plot_over=plot_over,
             )
@@ -278,13 +278,13 @@ def example_plot_fct(
 
             num_params = pl.scan_csv(file).filter(
                 (pl.col("num_heads") == num_heads_)
-                & (pl.col("linear_values") == linear_values_)
+                & (pl.col("linear_value") == linear_value_)
                 & (pl.col("depth") == depth_)
                 & (pl.col("width") == width_)
             ).collect()["num_params"][0]
             
             label = (
-                f"num_heads={num_heads_}, linear_values={linear_values_}, "
+                f"num_heads={num_heads_}, linear_value={linear_value_}, "
                 f"depth={depth_}, width={width_}, #params={format_num_params(num_params)}"
             )
             if loglog:
@@ -316,7 +316,7 @@ if __name__ == "__main__":
         depth=None,  # sweep the depths
         width=384,  # for a fixed width
         num_heads=1,  # fixed num_heads
-        linear_values=None,  # With and without linear values --> compare effects of them for different depths
+        linear_value=None,  # With and without linear values --> compare effects of them for different depths
         to_plot="val_losses",
         plot_over="epoch",
         show=True,
