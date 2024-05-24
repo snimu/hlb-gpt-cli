@@ -73,8 +73,6 @@ def load_xs_ys_avg_y(
         return load_steps_ys_avg_ys(df, arrays, to_plot)
     elif plot_over == "epoch":
         return load_epochs_ys_avg_ys(df, arrays, to_plot)
-    elif plot_over == "epoch_unique_token":
-        return load_epochs_unique_tokens_ys_avg_ys(df, arrays, to_plot)
     elif plot_over == "token":
         return load_tokens_ys_avg_ys(df, arrays, to_plot)
     elif plot_over == "time_sec":
@@ -108,16 +106,6 @@ def load_epochs_ys_avg_ys(
         to_plot: str,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     epochs_str = "epochs_train" if "train" in to_plot else "epochs_val"
-    xs = [series_to_array(df[epochs_str][i]) for i in range(len(df[epochs_str]))]
-    return interpolate_linearly(xs, arrays)
-
-
-def load_epochs_unique_tokens_ys_avg_ys(
-        df: pl.DataFrame,
-        arrays: list[np.ndarray],
-        to_plot: str,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    epochs_str = "epoch_by_distinct_tokens_seen_train" if "train" in to_plot else "epoch_by_distinct_tokens_seen_val"
     xs = [series_to_array(df[epochs_str][i]) for i in range(len(df[epochs_str]))]
     return interpolate_linearly(xs, arrays)
 
