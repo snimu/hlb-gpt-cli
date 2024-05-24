@@ -42,11 +42,11 @@ def load_xs_ys_avg_y(
         num_heads: int | None = None,
         run_num: int | None = None,
         seed: int | None = None,
-        to_plot: Literal["val_losses", "train_losses", "val_accs", "train_accs", "val_pplxs", "train_pplxs"] = "val_losses",
-        plot_over: Literal["step", "epoch", "epoch_unique_token", "token", "time_sec"] = "step",
+        to_plot: Literal["val_loss", "train_losses", "val_accs", "train_accs", "val_pplxs", "train_pplxs"] = "val_loss",
+        plot_over: Literal["step", "epoch", "token", "time_sec"] = "step",
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Load x, y, and average y from a CSV file."""
-    filters = (pl.col("mask").is_in(["forward", "backward", "bidirectional"]))  # initial condition -> always true
+    filters = (pl.col("last_val_loss").ge(0))  # initial condition -> always true
 
     if model_scale is not None:
         filters &= (pl.col("model_scale") == model_scale)
@@ -240,8 +240,8 @@ def example_plot_fct(
         width: int | None = 384,
         num_heads: int | None = None,
         linear_value: bool | None = False,
-        to_plot: Literal["val_losses", "train_losses", "val_accs", "train_accs", "val_pplxs"] = "val_losses",
-        plot_over: Literal["step", "epoch", "epoch_unique_token", "token", "time_sec"] = "epoch",
+        to_plot: Literal["val_loss", "train_losses", "val_accs", "train_accs", "val_pplxs"] = "val_loss",
+        plot_over: Literal["step", "epoch", "token", "time_sec"] = "epoch",
         show: bool = True,
         loglog: bool = False,
         plot_all: bool = False,
@@ -317,7 +317,7 @@ if __name__ == "__main__":
         width=384,  # for a fixed width
         num_heads=1,  # fixed num_heads
         linear_value=None,  # With and without linear values --> compare effects of them for different depths
-        to_plot="val_losses",
+        to_plot="val_loss",
         plot_over="epoch",
         show=True,
         loglog=False,
