@@ -21,15 +21,26 @@ def series_to_array(series: pl.Series) -> np.ndarray:
         return np.array(ast.literal_eval(series))
 
 
-def format_num_params(num_params: int) -> str:
+def format_num_params(num_params: int, round_to_digits: int = 1) -> str:
     if num_params < 1_000:
-        return str(num_params)
+        pnum = str(round(num_params, max(0, round_to_digits)))
+        scalar = ""
     elif num_params < 1_000_000:
-        return f"{num_params/1_000:.1f}k"
+        pnum = f"{round(num_params/1_000, max(0, round_to_digits))}"
+        scalar = "k"
     elif num_params < 1_000_000_000:
-        return f"{num_params/1_000_000:.1f}M"
+        pnum = f"{round(num_params/1_000_000, max(0, round_to_digits))}"
+        scalar = "M"
     else:
-        return f"{num_params/1_000_000_000:.1f}B"
+        pnum = f"{round(num_params/1_000_000_000, max(0, round_to_digits))}"
+        scalar = "B"
+
+    before_dot = pnum.split(".")[0]
+    after_dot = pnum.split(".")[1] if "." in pnum else ""
+    after_dot = "" if after_dot and (round_to_digits <= 0) else after_dot
+    after_dot = "" if after_dot and (int(after_dot) == 0) else after_dot
+
+    return f"{before_dot}{after_dot}{scalar}"
 
 
 def load_xs_ys_avg_y(
