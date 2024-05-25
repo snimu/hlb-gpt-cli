@@ -212,7 +212,7 @@ def generate_distinct_colors(n):
     return colors
 
 
-def unique_num_params(file: str) -> list[int]:
+def unique_num_params(file: str) -> np.ndarray:
     return (
         pl.scan_csv(file)
         .select("num_params")
@@ -223,7 +223,7 @@ def unique_num_params(file: str) -> list[int]:
     )
 
 
-def unique_widths(file: str) -> list[int]:
+def unique_widths(file: str) -> np.ndarray:
     return (
         pl.scan_csv(file)
         .select("width")
@@ -234,7 +234,7 @@ def unique_widths(file: str) -> list[int]:
     )
 
 
-def unique_depths(file: str) -> list[int]:
+def unique_depths(file: str) -> np.ndarray:
     return (
         pl.scan_csv(file)
         .select("depth")
