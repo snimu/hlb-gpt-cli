@@ -39,6 +39,7 @@ def format_num_params(num_params: int, round_to_digits: int = 1) -> str:
     after_dot = pnum.split(".")[1] if "." in pnum else ""
     after_dot = "" if after_dot and (round_to_digits <= 0) else after_dot
     after_dot = "" if after_dot and (int(after_dot) == 0) else after_dot
+    after_dot = "." + after_dot if after_dot else ""
 
     return f"{before_dot}{after_dot}{scalar}"
 
