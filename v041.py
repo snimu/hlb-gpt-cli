@@ -301,8 +301,8 @@ class SpeedyLangNet(nn.Module):
     def forward(self, x):
         # Look up the input embeddings from the input tokens
         x = self.net_dict['embedding'](x)
-        for block in range(hyp['net']['num_blocks']):
-            x = self.net_dict['attn_layers'][block](x) # note: residuals are included in the block definitions for these layers
+        for attn_block in self.net_dict['attn_layers']:
+            x = attn_block(x) # note: residuals are included in the block definitions for these layers
         x = self.net_dict['norm'](x)
         x = self.net_dict['outputs'](x)
         return x
