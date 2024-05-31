@@ -794,7 +794,7 @@ def get_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--max_epochs", 
-        type=int, default=1, 
+        type=float, default=1, 
         help="If epoch>=max_epochs, stop training and eval one last time. "
         "By default, this is the determining factor for training length. "
         "TYPE: int; DEFAULT: 1"
