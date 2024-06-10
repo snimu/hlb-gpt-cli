@@ -618,10 +618,7 @@ def train(net: SpeedyLangNet | None = None, **settings):
         tokens_seen += curr_batchsize * curr_length
         epoch = tokens_seen/len(data['train'])
 
-        do_eval = (
-            (curr_microbatch_step % discrete_sampled_microbatch_steps == 0) 
-            and (curr_step % hyp['opt']['eval_every'] == 0)
-        ) or (epoch - epochs_train[-1]) >= settings['max_epochs_between_evals']
+        do_eval = curr_step % 10 == 0 and curr_microbatch_step % discrete_sampled_microbatch_steps == 0
             
         if (
                 curr_step >= settings['max_steps'] 
@@ -633,15 +630,12 @@ def train(net: SpeedyLangNet | None = None, **settings):
             stop_run = True
 
         # Quick non-eval summary every N training steps, at the end of every microbatch group, including when we are not doing a _full eval_ here so that the resulting stats are complete
-        if do_eval or (curr_step % 10 == 0 and curr_microbatch_step % discrete_sampled_microbatch_steps == 0):
+        if do_eval:
             train_acc          = (outputs.detach().argmax(-1) == targets).float().mean().item()
             train_loss         = loss.detach().cpu().item()
 
             grad_norm = get_grad_norm(net)
 
-            if not do_eval:
-                train_summary_vars = {'epoch': epoch, 'curr_step': curr_step, 'train_loss': train_loss, 'train_acc': train_acc, 'grad_norm': grad_norm}
-                print_training_details(format_for_table(variables_to_log, locals=train_summary_vars))
             train_losses.append(train_loss)
             train_accs.append(train_acc)
             train_pplxs.append(float(calc_pplx(train_loss)))  # unnecessary float, but better safe than sorry
@@ -838,12 +832,6 @@ def get_args() -> argparse.Namespace:
         help="If t_secs>=max_time_seconds, stop training and eval one last time. "
         "Very high by default so that epochs are the determining factor by default. "
         "TYPE: int; DEFAULT: int(1e9)"
-    )
-    parser.add_argument(
-        "--max_epochs_between_evals", 
-        type=float, default=0.25, 
-        help="Eval at after at most this many epochs. "
-        "TYPE: float; DEFAULT: 0.25"
     )
 
     # Model settings
@@ -1054,7 +1042,6 @@ def main():
                 max_steps=args.max_steps,
                 max_tokens=args.max_tokens,
                 max_time_seconds=args.max_time_seconds,
-                max_epochs_between_evals=args.max_epochs_between_evals,
                 log_wandb=args.log_wandb,
                 wandb_project=args.wandb_project,
                 # include everything you want to log to wandb below, even if it's not used in the training function
