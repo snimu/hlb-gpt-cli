@@ -364,6 +364,7 @@ infinite_powah         = partial(infinite_power_law_decay, min_initial_mult=2e-2
 infinite_powah_outputs = partial(infinite_power_law_decay, min_initial_mult=1.,   peak_step=0.,                         exponent=-.2)
 pos_bias_decay_lr      = partial(exp_decay_lr_scheduler_base, decay=.995)
 
+
 def init_param_groups_dict(net, base_lr):
     # the 'scheduler' attribute that we create here is not used by the optimizer, here we just use it to conveniently store all of these attributes.
     param_groups = {}
@@ -391,6 +392,7 @@ def init_param_groups_dict(net, base_lr):
             param_groups[target_param_dict]['params'].append(p)
 
     return param_groups
+
 
 def get_grad_norm(net):
     # Gets the entire grad norm of the network.
@@ -434,6 +436,7 @@ def print_training_details(columns_list, separator_left='  ', separator_right=' 
     if column_labels_only or is_final_entry:
         print('-'*(len(output_line))) # print a lower divider bar
 
+
 # The previous function was a shorter but slightly more heinous lambda, however, this may still cause you some pain. <3 :'(
 def format_for_table(var_list, locals):
     int_format     = lambda x: f"{locals[x]}".rjust(len(x))
@@ -442,6 +445,29 @@ def format_for_table(var_list, locals):
 
     out_list = [blank_format(v) if v not in locals else (int_format(v) if type(locals[v]) == int else default_format(v)) for v in var_list]
     return out_list
+
+
+def format_num_params(num_params: int, round_to_digits: int = 1) -> str:
+    if num_params < 1_000:
+        pnum = str(round(num_params, max(0, round_to_digits)))
+        scalar = ""
+    elif num_params < 1_000_000:
+        pnum = f"{round(num_params/1_000, max(0, round_to_digits))}"
+        scalar = "k"
+    elif num_params < 1_000_000_000:
+        pnum = f"{round(num_params/1_000_000, max(0, round_to_digits))}"
+        scalar = "M"
+    else:
+        pnum = f"{round(num_params/1_000_000_000, max(0, round_to_digits))}"
+        scalar = "B"
+
+    before_dot = pnum.split(".")[0]
+    after_dot = pnum.split(".")[1] if "." in pnum else ""
+    after_dot = "" if after_dot and (round_to_digits <= 0) else after_dot
+    after_dot = "" if after_dot and (int(after_dot) == 0) else after_dot
+    after_dot = "." + after_dot if after_dot else ""
+
+    return f"{before_dot}{after_dot}{scalar}"
 
 
 ########################################
@@ -996,8 +1022,8 @@ def main():
                 f"\n:::    {model_scale=:.4f}"
                 f"\n:::    {depth=}"
                 f"\n:::    {width=}"
-                f"\n:::    {num_params=}"
-                f"\n:::    {num_non_embedding_params=}"
+                f"\n:::    num_params={format_num_params(num_params)}"
+                f"\n:::    num_non_embedding_params={format_num_params(num_non_embedding_params)}"
             )
             max_len = max(len(line) for line in title.split("\n"))
             title = "\n".join([line + " " * (max_len - len(line)) + " :::" for line in title.split("\n")])
