@@ -82,13 +82,13 @@ def load_xs_ys_avg_y(
     arrays = [series_to_array(df[to_plot][i]) for i in range(len(df[to_plot]))]
 
     if plot_over == "step":
-        return load_steps_ys_avg_ys(df, arrays, to_plot)
+        return load_steps_ys_avg_ys(df, arrays)
     elif plot_over == "epoch":
-        return load_epochs_ys_avg_ys(df, arrays, to_plot)
+        return load_epochs_ys_avg_ys(df, arrays)
     elif plot_over == "token":
-        return load_tokens_ys_avg_ys(df, arrays, to_plot)
+        return load_tokens_ys_avg_ys(df, arrays)
     elif plot_over == "time_sec":
-        return load_time_ys_avg_ys(df, arrays, to_plot)
+        return load_time_ys_avg_ys(df, arrays)
     else:
         raise ValueError(f"{plot_over} not a valid x-value")
 
@@ -96,50 +96,36 @@ def load_xs_ys_avg_y(
 def load_steps_ys_avg_ys(
         df: pl.DataFrame,
         arrays: list[np.ndarray],
-        to_plot: str,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     min_len = min([len(a) for a in arrays])
     ys = np.array([list(a[:min_len]) for a in arrays])
     num_datapoints = len(ys[0])
-
-    if "train" in to_plot:
-        xs = ((np.arange(num_datapoints) + 1) * 12.5).astype(int)
-    elif "val" in to_plot:
-        xs = (np.arange(num_datapoints) + 1) * 50
-
+    xs = ((np.arange(num_datapoints) + 1) * 12.5).astype(int)
     avg_ys = np.mean(ys, axis=0)
-
     return xs, ys, avg_ys
 
 
 def load_epochs_ys_avg_ys(
         df: pl.DataFrame,
         arrays: list[np.ndarray],
-        to_plot: str,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    epochs_str = "epochs_train" if "train" in to_plot else "epochs_val"
-    xs = [series_to_array(df[epochs_str][i]) for i in range(len(df[epochs_str]))]
+    xs = [series_to_array(df["epoch"][i]) for i in range(len(df["epoch"]))]
     return interpolate_linearly(xs, arrays)
 
 
 def load_tokens_ys_avg_ys(
         df: pl.DataFrame,
         arrays: list[np.ndarray],
-        to_plot: str,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    tokens_str = "tokens_seen_train" if "train" in to_plot else "tokens_seen_val"
-    xs = [series_to_array(df[tokens_str][i]) for i in range(len(df[tokens_str]))]
+    xs = [series_to_array(df["tokens_seen"][i]) for i in range(len(df["tokens_seen"]))]
     return interpolate_linearly(xs, arrays)
 
 
 def load_time_ys_avg_ys(
         df: pl.DataFrame,
         arrays: list[np.ndarray],
-        to_plot: str,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    assert "val" in to_plot, "Only validation data has time data"
-    time_str = "cumulative_time"
-    xs = [series_to_array(df[time_str][i]) for i in range(len(df[time_str]))]
+    xs = [series_to_array(df["cumulative_time"][i]) for i in range(len(df["cumulative_time"]))]
     return interpolate_linearly(xs, arrays)
 
 
