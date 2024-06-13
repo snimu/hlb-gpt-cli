@@ -336,7 +336,7 @@ def make_net(settings: dict[str, Any]):
 ########################################
 
 # Get a single batch item. Currently used in the training loop
-@torch.no_grad
+@torch.no_grad()
 def get_batch(data_dict, key, batchsize, length):
     start_indexes     = torch.randint(len(data_dict[key])-length-1, (batchsize,), device=hyp['misc']['device']) # warning, completely random sampling, not a random derangement, that might help performance a bit!
     sequence_indexes  = start_indexes.unsqueeze(-1) + batch_index_offsets[:length+1].unsqueeze(0) # slice, as batch_index_offsets are pre-allocated to max length for efficiency
