@@ -704,12 +704,12 @@ def train(net: SpeedyLangNet | None = None, **settings):
             
             if settings['log_wandb']:
                 wandb.log({
-                    'train_loss': train_loss,
-                    'train_acc': train_acc,
-                    'train_pplx': calc_pplx(train_loss),
-                    'val_loss': val_loss, 
-                    'val_acc': val_acc, 
-                    'val_pplx': val_pplx, 
+                    'train/loss': train_loss,
+                    'train/acc': train_acc,
+                    'train/pplx': calc_pplx(train_loss),
+                    'val/loss': val_loss, 
+                    'val/acc': val_acc, 
+                    'val/pplx': val_pplx, 
                     'tokens_seen': tokens_seen, 
                     'epoch': epoch,
                     'batch_size': curr_batchsize,
