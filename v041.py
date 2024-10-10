@@ -1,3 +1,7 @@
+# This is a variation of https://github.com/tysam-code/hlb-gpt
+# Credit goes to Fern (https://github.com/tysam-code)
+# Citation: @software{hlb-gpt_2024, author={Fern}, month={3}, title={{hlb-gpt}}, url={https://github.com/tysam-code/hlb-gpt}, version = {0.4.0}, year = {2024}}
+
 # Colab users, uncomment the following block to help clear out notebook state when re-running the cell.
 """
 # don't forget these too:
